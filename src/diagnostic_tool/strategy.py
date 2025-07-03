@@ -78,5 +78,78 @@ def calmar_ratio(
         "pass": calmar_ratio >= threshold
     }
 
+def sortino_ratio(
+        returns: Union[List[float],np.ndarray],
+        risk_free_rate: Union[float, np.array] = 0.0,
+        threshold: float = 1.0,
+) -> Dict[str, object]:
+    """
+    Calculates the Sortino Ratio of a strategy and evaluates it against a threshold (return per unit of downside risk).
+
+    Args:
+        returns: The returns of the strategy (list or np.ndarray).
+        risk_free_rate: The risk-free rate. Defaults to 0.0.
+        threshold: Minimum acceptable Sortino ratio. Defaults to 1.0.
+    Returns:
+        dict: A dictionary containing the Sortino Ratio and a pass/fail flag.
+    """
+    returns = np.atleast_1d(returns).astype(float)
+    risk_free_rate = np.atleast_1d(risk_free_rate).astype(float)
+    excess_returns = returns - risk_free_rate
+    downside_returns = np.minimum(excess_returns,0)
+    downside_std = np.sqrt(np.mean(downside_returns**2))
+    sortino_ratio = np.mean(excess_returns)/ downside_std if downside_std > 0 else np.nan
+    return {
+        "metric": "Sortino Ratio",
+        "value": round(sortino_ratio, 3),
+        "pass": sortino_ratio >= threshold
+    }
+
+def omega_ratio(
+        returns: Union[List[float],np.ndarray],
+        risk_free_rate: Union[float, np.ndarray] = 0.0,
+        threshold: float = 1.0,
+
+) -> Dict[str, object]:
+    '''
+    Calculates the Omega Ratio of a strategy and evaluates it against a threshold (probability-weighted return per unit of loss). It considers all
+    moments - mean, variance, skewness and kurtosis - of the return distribution.
+    Args:
+        returns: The returns of the strategy (list or np.ndarray).
+        risk_free_rate: The risk-free rate. Defaults to 0.0.
+        threshold: Minimum acceptable Omega ratio. Defaults to 1.0.
+    Returns:
+        dict: A dictionary containing the Omega Ratio and a pass/fail flag.
+    '''
+    returns = np.atleast_1d(returns).astype(float)
+    risk_free_rate = float(np.mean(np.atleast_1d(risk_free_rate)))
+    excess_returns = returns - risk_free_rate
+    gains = excess_returns[excess_returns >= 0]
+    losses = excess_returns[excess_returns < 0]
+    omega_ratio = np.sum(gains) / np.sum(losses) if np.sum(losses) > 0 else np.nan
+    return {
+        "metric": "Omega Ratio",
+        "value": round(omega_ratio, 3),
+        "pass": omega_ratio >= threshold
+    }
+
+def cvar(
+        returns: Union[List[float],np.ndarray],
+        risk_free_rate: Union[float, np.ndarray] = 0.0,
+        threshold: float = 0.0
+) -> Dict[str, object]:
+    '''
+    Calculates the Conditional Value at Risk (CVaR) of a strategy and evaluates it against a threshold (expected loss in the worst-case scenario).
+    Args:
+        returns: The returns of the strategy (list or np.ndarray).
+        risk_free_rate: The risk-free rate. Defaults to 0.0.
+        threshold: Minimum acceptable CVaR. Defaults to 0.0.
+    Returns:
+        dict: A dictionary containing the CVaR and a pass/fail flag.
+    '''
+    returns = np.atleast_1d(returns).astype(float)
+    risk_free_rate = float(np.mean(np.atleast_1d(risk_free_rate)))
+    excess_returns = returns - risk_free_rate
+
 
 
