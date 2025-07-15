@@ -150,6 +150,23 @@ def cvar(
     returns = np.atleast_1d(returns).astype(float)
     risk_free_rate = float(np.mean(np.atleast_1d(risk_free_rate)))
     excess_returns = returns - risk_free_rate
+    sorted_returns = np.sort(excess_returns)
+    n = len(sorted_returns)
+    if n == 0:
+        warnings.warn("No returns data provided for CVaR calculation.")
+        return {"metric": "CVaR", "value": np.nan, "pass": False}
+    threshold_index = int(0.05 * n)  # 5% worst-case scenario
+    if threshold_index >= n:
+        warnings.warn("Not enough data to calculate CVaR at the 5% level.")
+        return {"metric": "CVaR", "value": np.nan, "pass": False}
+    cvar_value = np.mean(sorted_returns[:threshold_index])
+    return {
+        "metric": "CVaR",
+        "value": round(cvar_value, 3),
+        "pass": cvar_value >= threshold
+    }
+
+
 
 
 
