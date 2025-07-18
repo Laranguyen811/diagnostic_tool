@@ -30,7 +30,7 @@ def check_sharpe_ratio(
         "pass": sharpe_ratio >= threshold
     }
 
-def max_drawdown(equity_curve: Union[List[float], np.ndarray]) -> float:
+def check_max_drawdown(equity_curve: Union[List[float], np.ndarray]) -> float:
     """
     Calculates the maximum drawdown of an equity curve.
 
@@ -47,7 +47,7 @@ def max_drawdown(equity_curve: Union[List[float], np.ndarray]) -> float:
     return round(max_drawdown_value * 100, 2)
 
 
-def calmar_ratio(
+def check_calmar_ratio(
         returns: Union[List[float], np.ndarray],
         risk_free_rate: Union[float, np.ndarray] = 0.0,
         threshold: float = 1.0
@@ -69,7 +69,7 @@ def calmar_ratio(
     excess_returns = returns - risk_free_rate
     mean_return = np.mean(excess_returns)
     annualised_return = mean_return * annual_factor
-    max_dd = max_drawdown(excess_returns)
+    max_dd = check_max_drawdown(excess_returns)
     calmar_ratio = annualised_return / max_dd if max_dd != 0 else np.nan
 
     return {
@@ -78,7 +78,7 @@ def calmar_ratio(
         "pass": calmar_ratio >= threshold
     }
 
-def sortino_ratio(
+def check_sortino_ratio(
         returns: Union[List[float],np.ndarray],
         risk_free_rate: Union[float, np.array] = 0.0,
         threshold: float = 1.0,
@@ -105,7 +105,7 @@ def sortino_ratio(
         "pass": sortino_ratio >= threshold
     }
 
-def omega_ratio(
+def check_omega_ratio(
         returns: Union[List[float],np.ndarray],
         risk_free_rate: Union[float, np.ndarray] = 0.0,
         threshold: float = 1.0,
@@ -133,7 +133,7 @@ def omega_ratio(
         "pass": omega_ratio >= threshold
     }
 
-def cvar(
+def check_cvar(
         returns: Union[List[float],np.ndarray],
         risk_free_rate: Union[float, np.ndarray] = 0.0,
         threshold: float = 0.0
