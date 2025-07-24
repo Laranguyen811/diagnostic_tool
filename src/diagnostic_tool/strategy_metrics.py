@@ -1,11 +1,26 @@
+from sys import pycache_prefix
+
 import numpy as np
 from typing import Union, List, Dict
 import warnings
 
+import pathlib
+import shutil
+
+def clean_pycache(root="."):
+    root_path = pathlib.Path(root)
+    for pycache in root_path.rglob("__pycache__"):
+        print(f"Removing: {pycache}")
+        shutil.rmtree(pycache)
+
+clean_pycache("src")
+
+
 def check_sharpe_ratio(
         returns: Union[List[float], np.ndarray],
         risk_free_rate: Union[float, np.ndarray] = 0.0,
-        threshold: float = 1.0
+        threshold: float = 1.0,
+        verbose: bool = False
 ) -> Dict[str, object]:
     """
     Calculates the Sharpe Ratio of a strategy and evaluates it against a threshold (return per unit of volatility).
@@ -19,17 +34,23 @@ def check_sharpe_ratio(
         dict: A dictionary containing the Sharpe Ratio and a pass/fail flag.
     """
     returns = np.atleast_1d(returns).astype(float)
-    risk_free_rate = np.atleast_1d(risk_free_rate).astype(float)
-    excess_returns = returns - risk_free_rate
+    # Handle scalar risk-free rate
+    if np.isscalar(risk_free_rate):
+        excess_returns = returns - risk_free_rate
+    else:
+        risk_free_rate = np.atleast_1d(risk_free_rate).astype(float)
+        excess_returns = returns - risk_free_rate
     std = np.std(excess_returns, ddof=1)
     sharpe_ratio = np.mean(excess_returns) / std if std > 0 else np.nan
 
-    return {
+    sharpe_results= {
         "metric": "Sharpe Ratio",
         "value": round(sharpe_ratio, 3),
         "pass": sharpe_ratio >= threshold
     }
-
+    if verbose:
+        print(f"metric: {sharpe_results['metric']}\n value: {sharpe_results['value']}\n pass: {sharpe_results['pass']}")
+    return sharpe_results
 def check_max_drawdown(equity_curve: Union[List[float], np.ndarray]) -> float:
     """
     Calculates the maximum drawdown of an equity curve.
@@ -42,7 +63,12 @@ def check_max_drawdown(equity_curve: Union[List[float], np.ndarray]) -> float:
     """
     equity_curve = np.atleast_1d(equity_curve).astype(float)
     peak = np.maximum.accumulate(equity_curve)
-    drawdown = (equity_curve - peak) / peak
+    print(f"Equity Curve: {equity_curve}")
+    print(f"Peak: {peak}")
+    print(f"Any zeros in peak: {np.any(peak == 0)}")
+    # Avoid division by zero
+    with np.errstate(divide='ignore', invalid='ignore'): # A context manager to temporarily control how NumPy handles floating-point errors
+        drawdown = np.where(peak > 0, (equity_curve - peak) / peak, 0)
     max_drawdown_value = np.min(drawdown)
     return round(max_drawdown_value * 100, 2)
 
