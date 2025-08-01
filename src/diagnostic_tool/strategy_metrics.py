@@ -7,15 +7,6 @@ import warnings
 import pathlib
 import shutil
 
-def clean_pycache(root="."):
-    root_path = pathlib.Path(root)
-    for pycache in root_path.rglob("__pycache__"):
-        print(f"Removing: {pycache}")
-        shutil.rmtree(pycache)
-
-clean_pycache("src")
-
-
 def check_sharpe_ratio(
         returns: Union[List[float], np.ndarray],
         risk_free_rate: Union[float, np.ndarray] = 0.0,
