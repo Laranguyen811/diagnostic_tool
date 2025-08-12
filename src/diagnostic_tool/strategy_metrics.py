@@ -42,6 +42,7 @@ def check_sharpe_ratio(
     if verbose:
         print(f"metric: {sharpe_results['metric']}\n value: {sharpe_results['value']}\n pass: {sharpe_results['pass']}")
     return sharpe_results
+
 def check_max_drawdown(equity_curve: Union[List[float], np.ndarray]) -> float:
     """
     Calculates the maximum drawdown of an equity curve.
@@ -62,7 +63,6 @@ def check_max_drawdown(equity_curve: Union[List[float], np.ndarray]) -> float:
         drawdown = np.where(peak > 0, (equity_curve - peak) / peak, 0)
     max_drawdown_value = np.min(drawdown)
     return round(max_drawdown_value * 100, 2)
-
 
 def check_calmar_ratio(
         returns: Union[List[float], np.ndarray],
