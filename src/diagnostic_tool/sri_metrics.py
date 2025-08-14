@@ -1,6 +1,8 @@
 import pandas as pd
-from typing import Dict, Union
+from typing import Dict, Union, Iterable
 import numpy as np
+import warnings
+from utils.validation import  validate_input_dict,validate_range
 
 class ESGMetricsCalculator:
     '''
@@ -383,73 +385,5 @@ class ESGMetricsCalculator:
         total_esg_score = total_environmental_score + total_social_score + total_governance_score
         return total_esg_score
 
-def calculate_biodiversity_units(
-        area: float,
-        distinctiveness: float,
-        condition: float,
-        strategic_significance: float,
-        connectivity: float,
-) -> float:
-    '''
-    Calculates the biodiversity units based on area, distinctiveness, condition, strategic significance, and connectivity.
-    Args:
-        area (float): Area of the habitat in hectares.
-        distinctiveness (float): Distinctiveness score of the habitat (0-1).
-        condition (float): Condition score of the habitat (0-1).
-        strategic_significance (float): Strategic significance score of the habitat (0-1).
-        connectivity (float): Connectivity score of the habitat (0-1).
-    Returns:
-        float: Calculated biodiversity units.
-    '''
-    return area * distinctiveness * condition * strategic_significance * connectivity
 
-def calculate_species_richness(
-        total_species: int,
-        area: float,
-        strict: bool = True,
-) -> Union[int, float]:
-    '''
-    Calculates the species richness based on the total number of species and the area.
-    Args:
-        total_species (int): Total number of species in the area.
-        area (float): Area of the habitat in hectares.
-    Returns:
-        Union[int, float]: Calculated species richness (species per hectare).
-    '''
-    if area <= 0:
-        if strict:
-            raise ValueError("Area must be greater than zero for strict mode.")
-        else:
-            # In non-strict mode, return NaN or zero to indicate invalid calculation
-            return float('nan')
-
-    return total_species / area
-
-def calculate_shannon_wiener_index(
-        n_i: int,
-        N: int,
-        strict: bool = True
-)-> float:
-    '''
-    Calculates the Shannon-Wiener index (more sensitive to rare species, capturing subtle shifts, mirroring entropy-based reasoning) based on the number of individuals of each species (n_i) and the total number of individuals (N).
-    Args:
-        n_i (int): Number of individuals of a species.
-        N (int): Total number of individuals in the community.
-    Returns:
-        float: Calculated Shannon-Wiener index.
-    '''
-    if N <= 0:
-        if strict:
-            raise ValueError("Total number of individuals (N) must be greater than zero.")
-        else:
-            # In non-strict mode, return NaN or zero to indicate invalid calculation
-            return float('nan')
-
-    proportion = n_i / N
-    log = np.log(proportion) if proportion > 0 else np.nan  # Avoid log(0)
-    return -proportion * log
-
-#def calculate_habitat_condition_score(
-
-#)
 
