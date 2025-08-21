@@ -2,30 +2,37 @@ from typing import Union, Iterable
 import numpy as np
 import pandas as pd
 import warnings
-from utils.validation import validate_range,validate_input_dict
-def calculate_biodiversity_units(
-        area: float,
-        distinctiveness: float,
-        condition: float,
-        strategic_significance: float,
-        connectivity: float,
-) -> float:
+from utils.validation import validate_range,validate_array_values, validate_input_dict
+def calculate_biodiversity_units(unit_data: dict) -> float:
     '''
     Calculates the biodiversity units based on area, distinctiveness, condition, strategic significance, and connectivity.
     Args:
-        area (float): Area of the habitat in hectares.
-        distinctiveness (float): Distinctiveness score of the habitat (0-1).
-        condition (float): Condition score of the habitat (0-1).
-        strategic_significance (float): Strategic significance score of the habitat (0-1).
-        connectivity (float): Connectivity score of the habitat (0-1).
+        unit_data (dict) : A dictionary of biodiversity units, including area, distinctiveness,condition,strategic_significance and connectivity
     Returns:
         float: Calculated biodiversity units.
     '''
-    return area * distinctiveness * condition * strategic_significance * connectivity
+    required_keys = {
+    "area": (0.01, float("inf")),
+    "distinctiveness": (0.0, 1.0),
+    "condition": (0.0, 1.0),
+    "strategic_significance": (0.0, 1.0),
+    "connectivity": (0.0, 1.0),
+}
+
+    validate_input_dict(unit_data,required_keys)
+    validate_range(unit_data["area"],0.01,float("inf"),"area")
+    for key in ["distinctiveness", "condition","strategic_significance", "connectivity"]:
+        validate_range(unit_data[key],0.0,1.0,key)
+    return (
+            unit_data["area"]
+            * unit_data["distinctiveness"]
+            * unit_data["condition"]
+            * unit_data["strategic_significance"]
+            * unit_data["connectivity"]
+    )
 
 def calculate_species_richness(
-        total_species: int,
-        area: float,
+        specimen_richness_data: dict,
         strict: bool = True,
 ) -> Union[int, float]:
     '''
@@ -36,11 +43,20 @@ def calculate_species_richness(
     Returns:
         Union[int, float]: Calculated species richness (species per hectare).
     '''
-    if area <= 0:
+    required_keys = {
+        "total_species": (0,float("inf")),
+        "area": (0.0,float("inf")),
+    }
+    validate_input_dict(specimen_richness_data,required_keys)
+    total_species = specimen_richness_data["total_species"]
+    area = specimen_richness_data["area"]
+    for key in ["total_species","area"]:
+        validate_range(specimen_richness_data[key],0,float("inf"),key)
+    if area == 0:
         if strict:
             raise ValueError("Area must be greater than zero for strict mode.")
         else:
-            # In non-strict mode, return NaN or zero to indicate invalid calculation
+        # In non-strict mode, return NaN or zero to indicate invalid calculation
             return float('nan')
 
     return total_species / area

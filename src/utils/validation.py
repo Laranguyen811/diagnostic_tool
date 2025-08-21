@@ -55,4 +55,6 @@ def validate_input_dict(
     for key, (min_val, max_val) in schema.items():
         if key not in inputs:
             raise ValueError(f"Missing input: {key}")
+        if not isinstance(inputs[key], (float, int)):
+            raise TypeError(f"{key} must be of type float or int")
         validate_range(inputs[key], min_val, max_val, name=key)
