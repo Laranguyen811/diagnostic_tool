@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import math
 
-from diagnostic_tool.biodiversity_metrics import calculate_shannon_wiener_index_batch,calculate_biodiversity_units, calculate_species_richness
+from diagnostic_tool.biodiversity_metrics import calculate_shannon_wiener_index_batch,calculate_biodiversity_units, calculate_species_richness,calculate_habitat_condition_score
 
 def test_shannon_index_typical_case():
     counts = [10,5,0,3]
@@ -97,7 +97,7 @@ def test_negative_species():
 
 def test_missing_keys():
     data = {"area": 10.0}
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         calculate_species_richness(data)
 
 def test_type_mismatch():
@@ -125,6 +125,104 @@ def test_species_richness_cases(species, area, expected):
     data = {"total_species": species, "area": area}
     result = calculate_species_richness(data)
     assert result == expected
+
+def test_condition_validate_input():
+    condition_data = {
+        "vegetation_cover":90.0,
+        "soil_quality": 0.8,
+        "water_quality": 0.9,
+        "invasive_species": 0.1,
+        "fauna_diversity": 0.7,
+    }
+    result = calculate_habitat_condition_score(condition_data)
+    expected = (90/100) * 0.8 * 0.9 * (1 - 0.1) * 0.7
+    assert result == expected
+
+def test_condition_out_of_range():
+    condition_data = {
+        "vegetation_cover": 110,  # Invalid
+        "soil_quality": 0.8,
+        "water_quality": 0.9,
+        "invasive_species": 0.1,
+        "fauna_diversity": 0.7,
+    }
+    with pytest.raises(ValueError) as excinfo:
+        calculate_habitat_condition_score(condition_data)
+    assert "vegetation_cover must be between 0.0 and 100.0" in str(excinfo.value)
+
+def test_condition_missing_key():
+    condition_data = {
+        "vegetation_cover": 90,
+        "soil_quality": 0.8,
+        # "water_quality" missing
+        "invasive_species": 0.1,
+        "fauna_diversity": 0.7,
+    }
+    with pytest.raises(ValueError) as excinfo:
+        calculate_habitat_condition_score(condition_data)
+
+def test_condition_type_mismatch():
+    condition_data = {
+        "vegetation_cover": "high",  # Invalid type
+        "soil_quality": 0.8,
+        "water_quality": 0.9,
+        "invasive_species": 0.1,
+        "fauna_diversity": 0.7,
+    }
+    with pytest.raises(TypeError) as excinfo:
+        calculate_habitat_condition_score(condition_data)
+
+    print(f"Raised error: {excinfo.value}")
+
+    assert "vegetation_cover must be of type float or int" in str(excinfo.value)
+
+@pytest.mark.parametrize("veg_cover",[0.0,100.0])
+def test_vegetation_cover_boundaries(veg_cover):
+    condition_data = {
+        "vegetation_cover": veg_cover,
+        "soil_quality": 1.0,
+        "water_quality": 1.0,
+        "invasive_species": 0.0,
+        "fauna_diversity": 1.0,
+    }
+    result = calculate_habitat_condition_score(condition_data)
+    expected = (veg_cover/100)
+    assert result == expected
+
+def test_condition_nan_input():
+    condition_data = {
+        "vegetation_cover": 90,
+        "soil_quality": float('nan'),  # Invalid
+        "water_quality": 0.9,
+        "invasive_species": 0.1,
+        "fauna_diversity": 0.7,
+    }
+    with pytest.raises(ValueError) as excinfo:
+        calculate_habitat_condition_score(condition_data)
+    assert "Soil quality must be between 0.0 and 1.0" in str(excinfo.value)
+
+def test_condition_extra_keys():
+    condition_data = {
+        "vegetation_cover": 90,
+        "soil_quality": 0.8,
+        "water_quality": 0.9,
+        "invasive_species": 0.1,
+        "fauna_diversity": 0.7,
+        "extra_param": 42,  # Extra key
+    }
+    result = calculate_habitat_condition_score(condition_data)
+    assert isinstance(result,float)
+
+def test_condition_all_zeros():
+    condition_data = {
+        "vegetation_cover": 0.0,
+        "soil_quality": 0.0,
+        "water_quality": 0.0,
+        "invasive_species": 0.0,
+        "fauna_diversity": 0.0,
+    }
+    result = calculate_habitat_condition_score(condition_data)
+    assert result == 0.0
 
 
 

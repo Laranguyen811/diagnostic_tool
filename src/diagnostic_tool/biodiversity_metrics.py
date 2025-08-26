@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import warnings
 from utils.validation import validate_range,validate_array_values, validate_input_dict
+import math
 def calculate_biodiversity_units(unit_data: dict) -> float:
     '''
     Calculates the biodiversity units based on area, distinctiveness, condition, strategic significance, and connectivity.
@@ -10,6 +11,16 @@ def calculate_biodiversity_units(unit_data: dict) -> float:
         unit_data (dict) : A dictionary of biodiversity units, including area, distinctiveness,condition,strategic_significance and connectivity
     Returns:
         float: Calculated biodiversity units.
+    Example:
+        >>> unit_data = {
+        ...     "area": 10.0,
+        ...     "distinctiveness": 0.8,
+        ...     "condition": 0.9,
+        ...     "strategic_significance": 1.0,
+        ...     "connectivity": 0.7,
+        ... }
+        >>> calculate_biodiversity_units(unit_data)
+        5.04
     '''
     required_keys = {
     "area": (0.01, float("inf")),
@@ -42,6 +53,13 @@ def calculate_species_richness(
         area (float): Area of the habitat in hectares.
     Returns:
         Union[int, float]: Calculated species richness (species per hectare).
+    Example:
+        >>> specimen_richness_data = {
+        ...     "total_species": 100,
+        ...     "area": 50.0,
+        ... }
+        >>> calculate_species_richness(specimen_richness_data)
+        2.0
     '''
     required_keys = {
         "total_species": (0,float("inf")),
@@ -103,29 +121,37 @@ def calculate_shannon_wiener_index_batch(
     return shannon_wiener_index
 
 def calculate_habitat_condition_score(
-    vegetation_cover: float,
-    soil_quality: float,
-    water_quality: float,
-    invasive_species: float,
-    fauna_diversity: float,
+    condition_data: dict
 ) -> float:
     '''
     Calculates the habitat condition score based on vegetation cover, soil quality, water quality, invasive species presence, and fauna diversity.
     Args:
-        vegetation_cover (float): Percentage of vegetation cover (0-100).
-        soil_quality (float): Soil quality score (0-1).
-        water_quality (float): Water quality score (0-1).
-        invasive_species (float): Invasive species presence score (0-1).
-        fauna_diversity (float): Fauna diversity score (0-1).
+        condition_data (dict): A dictionary of habitat condition parameters, including vegetation_cover, soil_quality, water_quality, invasive_species, and fauna_diversity
     Returns:
         float: Calculated habitat condition score.
+    Example:
+        >>> condition_data = {
+        ...     "vegetation_cover": 80.0,
+        ...     "soil_quality": 0.9,
+        ...     "water_quality": 0.8,
+        ...     "invasive_species": 0.1,
+        ...     "fauna_diversity": 0.7,
+        ... }
+        >>> calculate_habitat_condition_score(condition_data)
+        0.4032
     '''
-
-    return (
-        vegetation_cover * 0.25 +
-        soil_quality * 0.25 +
-        water_quality * 0.2 +
-        (1 - invasive_species) * 0.15 +
-        fauna_diversity * 0.15
-    )
+    required_keys ={
+        "vegetation_cover": (0.0, 100.0),
+        "soil_quality": (0.0, 1.0),
+        "water_quality": (0.0, 1.0),
+        "invasive_species": (0.0, 1.0),
+        "fauna_diversity": (0.0, 1.0),
+    }
+    validate_input_dict(condition_data,required_keys)
+    for key, (min_val, max_val) in required_keys.items():
+        validate_range(condition_data[key], min_val, max_val, name=key)
+    score = (condition_data["vegetation_cover"] / 100.0) * condition_data["soil_quality"] * condition_data["water_quality"] * (1 - condition_data["invasive_species"]) * condition_data["fauna_diversity"]
+    if not math.isfinite(score):
+        raise ValueError("Habitat condition score must be finite.")
+    return score
 
