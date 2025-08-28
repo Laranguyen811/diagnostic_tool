@@ -1,8 +1,10 @@
+import warnings
+
 import numpy as np
 import pytest
 import math
 
-from diagnostic_tool.biodiversity_metrics import calculate_shannon_wiener_index_batch,calculate_biodiversity_units, calculate_species_richness,calculate_habitat_condition_score
+from diagnostic_tool.biodiversity_metrics import calculate_shannon_wiener_index_batch,calculate_biodiversity_units, calculate_species_richness,calculate_habitat_condition_score, calculate_endemism_index
 
 def test_shannon_index_typical_case():
     counts = [10,5,0,3]
@@ -224,5 +226,55 @@ def test_condition_all_zeros():
     result = calculate_habitat_condition_score(condition_data)
     assert result == 0.0
 
+def test_endemism_index_validate_input():
+    endemism_data = [
+        {"presence_or_absence": 1, "total_regions": 10},
+        {"presence_or_absence": 0, "total_regions": 10},
+        {"presence_or_absence": 1, "total_regions": 10},
+    ]
+    result = calculate_endemism_index(endemism_data)
+    expected = 0.2
+    assert result == expected
 
+def test_endemism_index_out_of_range():
+    endemism_data = [
+        {"presence_or_absence":2, "total_regions": 10}, # out of range
+        {"presence_or_absence":0, "total_regions": 10},
+        {"presence_or_absence":1, "total_regions": 10},
+    ]
+    with pytest.raises(ValueError) as excinfo:
+        calculate_endemism_index(endemism_data)
+    print (excinfo.value)
+    assert "presence_or_absence must be between 0 and 1" in str(excinfo.value)
+
+def test_endemism_missing_key():
+    endemism_data = [
+        {"presence_or_absence": 1, "total_regions": 10},
+        {"total_regions": 10},  # Missing presence_or_absence
+    ]
+    with pytest.raises(ValueError) as excinfo:
+        calculate_endemism_index(endemism_data)
+    print (excinfo.value)
+
+def test_endemism_type_mismatch():
+    endemism_data = [
+        {"presence_or_absence": 1, "total_regions": "10"}, # Type mismatch
+        {"presence_or_absence": 0, "total_regions": 100},
+        {"presence_or_absence": 1, "total_regions": 10},
+        {"presence_or_absence":None, "total_regions": 10}, # Type mismatch
+    ]
+    with pytest.raises(TypeError) as excinfo:
+        calculate_endemism_index(endemism_data)
+    print (excinfo.value)
+
+def test_endemism_zero_total():
+    endemism_data = [
+        {"presence_or_absence":0, "total_regions": 0}, # Total regions zero
+        {"presence_or_absence":0, "total_regions": 10}, # Total regions zero
+    ]
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        result = calculate_endemism_index(endemism_data)
+        assert result == (0.0, 1)
+        assert any("Skipping invalid record" in str(warn.message) for warn in w)
 

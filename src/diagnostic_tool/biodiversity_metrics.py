@@ -1,9 +1,10 @@
-from typing import Union, Iterable
+from typing import Union, Iterable, List, Dict, Any
 import numpy as np
 import pandas as pd
 import warnings
 from utils.validation import validate_range,validate_array_values, validate_input_dict
 import math
+import warnings
 def calculate_biodiversity_units(unit_data: dict) -> float:
     '''
     Calculates the biodiversity units based on area, distinctiveness, condition, strategic significance, and connectivity.
@@ -154,4 +155,45 @@ def calculate_habitat_condition_score(
     if not math.isfinite(score):
         raise ValueError("Habitat condition score must be finite.")
     return score
+
+def calculate_endemism_index(
+        endemism_data: List[Dict[str,Any]],
+)-> tuple[float,int]:
+    '''
+    Calculates the endemism index based on the number of endemic species and total species.
+    Each record must include:
+        - 'presence_or_absence': 1 if species is present, 0 if absent
+        - 'total_regions': int > 0
+    Args:
+        endemism_data (List[Dict[str,Any]]): Alist of dictionaries of endemism parameters
+    Returns:
+        float: Calculated endemism index.
+    Example:
+        >>> endemism_data = [
+        ...     {"presence_or_absence": 1,
+        ...     "total_regions": 2},
+        ...     {"presence_or_absence": 1,
+        ...     "total_regions": 1},
+        ... ]
+        >>> calculate_endemism_index(endemism_data)
+        1.5
+    '''
+    required_keys = {
+        "presence_or_absence":(0,1),
+        "total_regions": (1, float("inf")), # must be > 0
+    }
+    weighted_endemic_index = 0.0
+    num_skipped = 0
+    for record in endemism_data:
+        try:
+            validate_input_dict(record,required_keys)
+            for key, (min_val, max_val) in required_keys.items():
+                validate_range(record[key],min_val,max_val,key)
+            if record["presence_or_absence"] == 1:
+                weighted_endemic_index += 1 / record["total_regions"]
+        except ValueError as e:
+                warnings.warn(f"Skipping invalid record:{e}")
+                num_skipped += 1
+                continue
+    return weighted_endemic_index, num_skipped
 
