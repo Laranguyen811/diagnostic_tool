@@ -278,3 +278,32 @@ def test_endemism_zero_total():
         assert result == (0.0, 1)
         assert any("Skipping invalid record" in str(warn.message) for warn in w)
 
+
+def test_endemism_empty_input():
+    endemism_data = []
+    result = calculate_endemism_index(endemism_data)
+    assert result == (0.0, 0)
+
+def test_endemism_mixed_validity():
+    endemism_data = [
+        {"presence_or_absence": 1, "total_regions": 10},
+        {"presence_or_absence": 0, "total_regions": 10},
+        {"presence_or_absence": 1, "total_regions": 10},
+        {"presence_or_absence": 2, "total_regions": 10}, # Invalid inputs
+
+    ]
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        result = calculate_endemism_index(endemism_data)
+        assert result == (0.2, 1)
+        assert any("Skipping invalid record" in str(warn.message) for warn in w)
+
+
+def test_endemism_precision():
+    endemism_data = [
+        {"presence_or_absence": 1, "total_regions": 3},
+        {"presence_or_absence": 1, "total_regions": 3},
+    ]
+    result = calculate_endemism_index(endemism_data)
+    assert pytest.approx(result[0], 0.01) == 0.6667
+

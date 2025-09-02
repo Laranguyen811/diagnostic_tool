@@ -1,21 +1,17 @@
-import numpy as np
 import pytest
-from diagnostic_tool.biodiversity_metrics import calculate_shannon_wiener_index_batch
 
-def test_shannon_index_typical_case():
-    counts = [10,5,0,3]
-    result = calculate_shannon_wiener_index_batch(counts,strict=False)
-    expected = -sum([
-        (10/18) * np.log(10/18),
-        (5/18) * np.log(5/18),
-        (3/18) * np.log(3/18)
-    ])
-    assert np.isclose(result,expected,atol=1e-6)
+@pytest.fixture
+def sample_input():
+    return {"presence_or_absence": 1, "total_regions": 10}
 
-def test_shannon_index_strict_mode_raises():
-    with pytest.raises(ValueError):
-        calculate_shannon_wiener_index_batch([10,0,5],strict=True)
+def python_collection_modifyitems(items):
+    for item in items:
+        item.name = item.name.upper()
 
-def test_shannon_index_zero_total():
-    result = calculate_shannon_wiener_index_batch([0,0,0],strict=False)
-    assert  np.isnan(result)
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "unit: mark as unit test")
+
+@pytest.mark.unit
+def test_unit_function():
+    assert 1 == 1

@@ -5,6 +5,9 @@ import warnings
 from utils.validation import validate_range,validate_array_values, validate_input_dict
 import math
 import warnings
+import gower
+from scipy.spatial.distance import pdist, squareform
+from skbio.stats.ordination import pcoa
 def calculate_biodiversity_units(unit_data: dict) -> float:
     '''
     Calculates the biodiversity units based on area, distinctiveness, condition, strategic significance, and connectivity.
@@ -197,3 +200,26 @@ def calculate_endemism_index(
                 continue
     return weighted_endemic_index, num_skipped
 
+def calculate_functional_diversity(
+        trait_data: List[Dict[str,Any]]
+)-> float:
+    """
+    Calculate functional diversity, categorising based on traits of species.
+    Inputs:
+        trait_data (List[Dict[str,Any]]): A list of dictionaries of trait parameters
+    Returns:
+        float: Calculated functional diversity.
+    """
+    required_keys = {
+        "species_id":(str,int),
+        "trait_1":(float,str),
+        "trait_2":(float,str),
+        "trait_3":(float,str),
+        "trait_4":(float,str),
+        "trait_5":(float,str),
+        "trait_6":(float,str),
+        "abundance":(float)
+
+
+
+    }
