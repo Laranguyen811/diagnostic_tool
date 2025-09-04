@@ -243,7 +243,7 @@ def prepare_trait_matrix(trait_data: List[Dict[str,Any]]) -> ndarray:
     trait_matrix = np.hstack([encoded,scaled]) # Horizontally stack encoded and scaled columns
     return trait_matrix
 
-def calculate_functional_diversity(
+def calculate_functional_richness(
         trait_matrix: ndarray,
 )-> float:
     """
@@ -251,7 +251,7 @@ def calculate_functional_diversity(
     Inputs:
         trait_data (List[Dict[str,Any]]): A list of dictionaries of trait parameters
     Returns:
-        float: Calculated functional diversity.
+        float: Calculated functional richness.
     """
 
     hull = ConvexHull(trait_matrix, incremental=True)
