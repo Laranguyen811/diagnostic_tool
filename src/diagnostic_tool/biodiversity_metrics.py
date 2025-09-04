@@ -2,12 +2,17 @@ from typing import Union, Iterable, List, Dict, Any
 import numpy as np
 import pandas as pd
 import warnings
+
+from numpy import ndarray
+
 from utils.validation import validate_range,validate_array_values, validate_input_dict
 import math
 import warnings
 import gower
 from scipy.spatial.distance import pdist, squareform
 from skbio.stats.ordination import pcoa
+from scipy.spatial import ConvexHull
+from scikit_learn.preprocessing import StandardScaler, OneHotEncoder
 def calculate_biodiversity_units(unit_data: dict) -> float:
     '''
     Calculates the biodiversity units based on area, distinctiveness, condition, strategic significance, and connectivity.
@@ -200,15 +205,13 @@ def calculate_endemism_index(
                 continue
     return weighted_endemic_index, num_skipped
 
-def calculate_functional_diversity(
-        trait_data: List[Dict[str,Any]]
-)-> float:
+def prepare_trait_matrix(trait_data: List[Dict[str,Any]]) -> ndarray:
     """
-    Calculate functional diversity, categorising based on traits of species.
-    Inputs:
-        trait_data (List[Dict[str,Any]]): A list of dictionaries of trait parameters
+    Prepare trait matrix for functional diversity calculation.
+    Args:
+        trait_data (List[Dict[str,Any]]): A dictionary of trait parameters
     Returns:
-        float: Calculated functional diversity.
+        ndarray: Trait matrix.
     """
     required_keys = {
         "species_id":(str,int),
@@ -218,8 +221,39 @@ def calculate_functional_diversity(
         "trait_4":(float,str),
         "trait_5":(float,str),
         "trait_6":(float,str),
-        "abundance":(float)
-
-
+        "abundance":float,
 
     }
+    oh = OneHotEncoder(sparse=False)
+    std_scaler = StandardScaler()
+    for trait_dict in trait_data:
+        validate_input_dict(trait_dict,required_keys)
+        for key, (min_val, max_val) in required_keys.items():
+            validate_array_values(trait_dict[key],min_val,max_val,key)
+    trait_data = pd.DataFrame(trait_data)
+    cat_cols = [] # Categorical columns
+    cont_cols = [] # Continuous columns
+    for key in ["trait_1","trait_2","trait_3","trait_4","trait_5","trait_6"]:
+        if trait_data[key].dtype == 'object' or trait_data[key].apply(lambda x: isinstance(x,str)).any():
+            cat_cols.append(key)
+        else:
+            cont_cols.append(key)
+    encoded = oh.fit_transform(trait_data[cat_cols] if cat_cols else np.empty((len(trait_data),0)))
+    scaled = std_scaler.fit_transform(trait_data[cont_cols] if cont_cols else np.empty((len(trait_data),0)))
+    trait_matrix = np.hstack([encoded,scaled]) # Horizontally stack encoded and scaled columns
+    return trait_matrix
+
+def calculate_functional_diversity(
+        trait_matrix: ndarray,
+)-> float:
+    """
+    Calculate functional diversity, categorising based on traits of species.
+    Inputs:
+        trait_data (List[Dict[str,Any]]): A list of dictionaries of trait parameters
+    Returns:
+        float: Calculated functional diversity.
+    """
+
+    hull = ConvexHull(trait_matrix, incremental=True)
+    functional_richness = hull.volume
+    return functional_richness
