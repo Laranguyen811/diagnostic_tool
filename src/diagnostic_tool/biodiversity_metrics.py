@@ -2,17 +2,19 @@ from typing import Union, Iterable, List, Dict, Any, Tuple, Optional
 import numpy as np
 import pandas as pd
 import warnings
-
 from numpy import ndarray
-
 from utils.validation import validate_range,validate_array_values, validate_type_schema
 import math
 import warnings
 import gower
 from scipy.spatial.distance import pdist, squareform
 from skbio.stats.ordination import pcoa
-from scipy.spatial import ConvexHull
+from scipy.spatial import ConvexHull, QhullError
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
+import logging
+
+logger = logging.getLogger("diagnostic_tool.biodiversity_metrics")
+logger.setLevel(logging.INFO)
 def calculate_biodiversity_units(unit_data: List[Dict[str,Any]]) -> float:
     '''
     Calculates the biodiversity units based on area, distinctiveness, condition, strategic significance, and connectivity.
@@ -221,7 +223,7 @@ def calculate_endemism_index(
 
 def build_required_keys(
         trait_fields:List[str],
-        id_type: Tuple[type, ...] = (str, float),
+        id_type : Tuple[type, ...] = (str, float),
         abundance_type: Tuple[type, ...]=(float,),
         trait_ranges: Optional[Dict[str, Tuple[float, float]]] = None,
 ) -> Dict[str, Dict[str, Any]]:
@@ -246,7 +248,24 @@ def build_required_keys(
         if trait_ranges and trait in trait_ranges:
             keys[trait]["range"] = trait_ranges[trait]
     return keys
-
+def filter_valid_records(trait_data: List[Dict[str,Any]]) -> List[Dict[str,Any]]:
+    """
+    Filter out invalid records from trait data based on required keys.
+    Args:
+        trait_data (List[Dict[str,Any]]): A list of dictionaries containing trait data.
+    Returns:
+        List[Dict[str,Any]]: A list of valid records.
+    """
+    valid_records = []
+    for i,record in enumerate(trait_data):
+        if "abundance" not in record or not isinstance(record["abundance"], (float,int)):
+            warnings.warn(f"Skipping record {i} due to missing or invalid abundance.")
+            continue
+        if record["abundance"] < 0:
+            warnings.warn(f"Skipping record {i} due to negative abundance.")
+            continue
+        valid_records.append(record)
+    return valid_records
 def prepare_trait_matrix(trait_data: List[Dict[str,Any]], trait_count: int = 6) -> ndarray:
     """
     Prepare trait matrix for functional diversity calculation.
@@ -256,19 +275,31 @@ def prepare_trait_matrix(trait_data: List[Dict[str,Any]], trait_count: int = 6) 
     Returns:
         ndarray: Trait matrix.
     """
+    print("prepare_trait_matrix was called")
     trait_fields = [f"trait_{i}" for i in range(1, trait_count +1)]
     trait_ranges = {
     trait:(float("-inf"), float("inf")) for trait in trait_fields
     }
     required_keys = build_required_keys(trait_fields,trait_ranges=trait_ranges)
+    for key, meta in required_keys.items():
+        print(f"{key}: {meta}")
+
     type_schema = {
         key: meta["types"]
         for key, meta in required_keys.items()
+
     }
+    for key, types in type_schema.items():
+        assert all(isinstance(t, type) for t in types), f"{key} has invalid types: {types}"
     validate_type_schema(trait_data, type_schema)
     oh = OneHotEncoder()
     std_scaler = StandardScaler()
     df = pd.DataFrame(trait_data)
+    print("Columns in DataFrame:", df.columns.tolist())
+    missing_traits = [trait for trait in trait_fields if trait not in df.columns]
+    print("Missing traits:", missing_traits)
+    if missing_traits:
+        raise ValueError(f"Missing required trait fields: {missing_traits}")
     trait_df = df[trait_fields]
     cat_cols = [] # Categorical columns
     cont_cols = [] # Continuous columns
@@ -278,7 +309,7 @@ def prepare_trait_matrix(trait_data: List[Dict[str,Any]], trait_count: int = 6) 
         else:
             cont_cols.append(key)
 
-    encoded = oh.fit_transform(trait_df[cat_cols]) if cat_cols else np.empty((len(trait_df), 0))
+    encoded = oh.fit_transform(trait_df[cat_cols]).toarray() if cat_cols else np.empty((len(trait_df), 0)) # need to ensure this is a dense matrix since np.hstack requires dense matrices
     scaled = std_scaler.fit_transform(trait_df[cont_cols]) if cont_cols else np.empty((len(trait_df), 0))
     trait_matrix = np.hstack([encoded,scaled]) # Horizontally stack encoded and scaled columns
     return trait_matrix
@@ -294,9 +325,23 @@ def calculate_functional_richness(
     Returns:
         float: Calculated functional richness.
     """
+    trait_data = filter_valid_records(trait_data)
+    if len(trait_data) < 3:
+        return 0.0
+    logger.info("Calling prepare_trait_matrix")
     trait_matrix = prepare_trait_matrix(trait_data,trait_count)
     if trait_matrix.shape[0] <= trait_matrix.shape[1]:
+        logger.warning(f"Matrix has insufficient rank for ConvexHull calculation. Shape: {trait_matrix.shape}")
         return 0.0
-    hull = ConvexHull(trait_matrix, incremental=True)
-    functional_richness = hull.volume
-    return functional_richness
+    logger.info("Passed matrix shape check")
+    logger.info(f"Trait matrix shape: {trait_matrix.shape} \n Matrix rank: {np.linalg.matrix_rank(trait_matrix)}")
+    try:
+        hull = ConvexHull(trait_matrix, incremental=True)
+        functional_richness = hull.volume
+        return functional_richness
+    except QhullError:
+        logger.warning(f"Hull calculation failed for {trait_matrix}")
+        return 0.0
+
+
+

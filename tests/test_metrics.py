@@ -3,8 +3,19 @@ import warnings
 import numpy as np
 import pytest
 import math
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from statsmodels.graphics.tukeyplot import results
+import logging
+import sys
 
-from diagnostic_tool.biodiversity_metrics import calculate_shannon_wiener_index_batch,calculate_biodiversity_units, calculate_species_richness,calculate_habitat_condition_score, calculate_endemism_index
+from diagnostic_tool.biodiversity_metrics import calculate_shannon_wiener_index_batch,calculate_biodiversity_units, calculate_species_richness,calculate_habitat_condition_score, calculate_endemism_index, calculate_functional_richness
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s:%(name)s:%(message)s",
+    stream=sys.stdout  # Ensures logs go to console, not stderr
+)
 
 def test_shannon_index_typical_case():
     counts = [10,5,0,3]
@@ -307,3 +318,91 @@ def test_endemism_precision():
     result = calculate_endemism_index(endemism_data)
     assert pytest.approx(result[0], 0.01) == 0.6667
 
+def test_functional_richness_basic():
+    trait_data : List[Dict[str, Any]] = [
+        {"species_id": "A", "abundance": 10.0, "trait_1": "fast", "trait_2": 0.5, "trait_3": "small", "trait_4": 1.0,
+         "trait_5": "red", "trait_6": 2.0},
+        {"species_id": "B", "abundance": 20.0, "trait_1": "slow", "trait_2": 0.7, "trait_3": "large", "trait_4": 1.5,
+         "trait_5": "blue", "trait_6": 2.5},
+        {"species_id": "C", "abundance": 15.0, "trait_1": "medium", "trait_2": 0.6, "trait_3": "medium", "trait_4": 1.2,
+         "trait_5": "green", "trait_6": 2.2},
+    ]
+    richness = calculate_functional_richness(trait_data,trait_count=6)
+    assert richness == 0.0
+
+def test_functional_richness_missing_key():
+    trait_data : List[Dict[str, Any]] = [
+        {"species_id": "A", "abundance": 10.0, "trait_1": "fast", "trait_2": 0.5, "trait_3": "small", "trait_4": 1.0,
+         "trait_5": "red"},
+        {"species_id": "B", "abundance": 20.0, "trait_1": "slow", "trait_2": 0.7, "trait_3": "large", "trait_4": 1.5,
+         "trait_5": "blue", "trait_6": 2.5},
+    ]
+    with pytest.raises(ValueError) as excinfo:
+        calculate_functional_richness(trait_data,trait_count=6)
+    print (excinfo.value)
+
+def test_functional_richness_type_mismatch():
+    trait_data : List[Dict[str, Any]] = [
+        {"species_id": "A", "abundance": "a lot", "trait_1": "fast", "trait_2": 0.5, "trait_3": "small", "trait_4": 1.0,
+         "trait_5": "red", "trait_6": 2.0},
+        {"species_id": "B", "abundance": 20.0, "trait_1": "slow", "trait_2": 0.7, "trait_3": "large", "trait_4": 1.5,
+         "trait_5": "blue", "trait_6": 2.5},
+    ]
+    with pytest.raises(TypeError) as excinfo:
+        calculate_functional_richness(trait_data,trait_count=6)
+    print (excinfo.value)
+
+def test_functional_richness_empty_input():
+    trait_data : List[Dict[str, Any]] = []
+    with pytest.raises(KeyError) as excinfo:
+        calculate_functional_richness(trait_data,trait_count=6)
+    print (excinfo.value)
+
+def test_functional_richness_mixed_validity():
+    trait_data : List[Dict[str, Any]] = [
+        {"species_id": "A", "abundance": 10.0, "trait_1": "fast", "trait_2": 0.5, "trait_3": "small", "trait_4": 1.0,
+         "trait_5": "red", "trait_6": 2.0},
+        {"species_id": "B", "abundance": -20.0, "trait_1": "slow", "trait_2": 0.7, "trait_3": "large", "trait_4": 1.5,
+         "trait_5": "blue", "trait_6": 2.5}, # Invalid abundance
+        {"species_id": "C", "abundance": 15.0, "trait_1": "medium", "trait_2": 0.6, "trait_3": "medium", "trait_4": 1.2,
+         "trait_5": "green", "trait_6": 2.2},
+    ]
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        richness = calculate_functional_richness(trait_data,trait_count=6)
+        assert richness == 0.0
+        assert any("negative abundance" in str(warn.message) for warn in w)
+
+def test_functional_richness_high_precision():
+    trait_data : List[Dict[str, Any]] = [
+        {"species_id": "A", "abundance": 1e-10, "trait_1": "fast", "trait_2": 0.5, "trait_3": "small", "trait_4": 1.0,
+         "trait_5": "red", "trait_6": 2.0},
+        {"species_id": "B", "abundance": 2e-10, "trait_1": "slow", "trait_2": 0.7, "trait_3": "large", "trait_4": 1.5,
+         "trait_5": "blue", "trait_6": 2.5},
+    ]
+    richness = calculate_functional_richness(trait_data,trait_count=6)
+    assert round(richness, 10) == 0.0
+
+def test_functional_richness_nonzero_volume(caplog):
+    caplog.set_level(logging.INFO, logger="diagnostic_tool.biodiversity_metrics")
+    trait_data = [
+        {"species_id": "A", "abundance": 10.0, "trait_1": "fast", "trait_2": 0.1, "trait_3": "small", "trait_4": 0.1,
+         "trait_5": "red", "trait_6": 0.1},
+        {"species_id": "B", "abundance": 20.0, "trait_1": "slow", "trait_2": 0.9, "trait_3": "large", "trait_4": 0.9,
+         "trait_5": "blue", "trait_6": 0.9},
+        {"species_id": "C", "abundance": 15.0, "trait_1": "medium", "trait_2": 0.5, "trait_3": "medium", "trait_4": 0.5,
+         "trait_5": "green", "trait_6": 0.5},
+    ]
+    richness = calculate_functional_richness(trait_data,trait_count=6)
+    assert richness == 0.0
+    assert any("insufficient rank" in message for message in caplog.messages)
+    print(caplog.text)
+
+def test_functional_richness_all_traits_missing():
+    trait_data = [
+        {"species_id": "A", "abundance": 10.0},
+        {"species_id": "B", "abundance": 20.0},
+    ]
+    with pytest.raises(ValueError) as excinfo:
+        calculate_functional_richness(trait_data,trait_count=6)
+    print(excinfo.value)

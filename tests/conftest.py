@@ -1,5 +1,5 @@
 import pytest
-
+import logging
 @pytest.fixture
 def sample_input():
     return {"presence_or_absence": 1, "total_regions": 10}
@@ -15,3 +15,6 @@ def pytest_configure(config):
 @pytest.mark.unit
 def test_unit_function():
     assert 1 == 1
+
+logging.basicConfig(level=logging.DEBUG,
+                    format="%(levelname)s:%(name)s:%(message)s")
