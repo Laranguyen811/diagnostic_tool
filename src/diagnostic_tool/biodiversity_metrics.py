@@ -326,10 +326,10 @@ def calculate_functional_richness(
         float: Calculated functional richness.
     """
     trait_data = filter_valid_records(trait_data)
+    trait_matrix = prepare_trait_matrix(trait_data, trait_count)
     if len(trait_data) < 3:
         return 0.0
     logger.info("Calling prepare_trait_matrix")
-    trait_matrix = prepare_trait_matrix(trait_data,trait_count)
     if trait_matrix.shape[0] <= trait_matrix.shape[1]:
         logger.warning(f"Matrix has insufficient rank for ConvexHull calculation. Shape: {trait_matrix.shape}")
         return 0.0
@@ -344,4 +344,40 @@ def calculate_functional_richness(
         return 0.0
 
 
+def calculate_simpson_index(
+        simpson_data: List[Dict[str,Any]]
+) -> float:
+    """
+    Calculate the Simpson's Diversity Index based on species abundance data.
+    Args:
+        simpson_data (List[Dict[str,Any]]): A list of dictionaries containing species abundance data.
+    Returns:
+        float: Calculated Simpson's Diversity Index.
+    Example:
+        >>> simpson_data = [{
 
+        ..."species_id":"A", "abundance": 10,
+        ... }, {
+        ... "species_id":"B", "abundance": 5,
+        ... }, {
+        ..."species_id":"C", "abundance": 3,
+        ... }]
+        >>> calculate_simpson_index(simpson_data)
+        0.612
+    """
+    total_abundance = 0
+    sum_pi_squared = 0.0
+
+    type_schema = {
+        "species_id": (str, float),
+        "abundance": (int, int)
+    }
+    validate_type_schema(simpson_data, type_schema)
+    for record in simpson_data:
+        validate_range(record["abundance"], 0, float("inf"), "abundance")
+        total_abundance += record["abundance"]
+    for record in simpson_data:
+        pi = record["abundance"] / total_abundance
+        sum_pi_squared += pi * pi
+    simpson_index = 1 - sum_pi_squared
+    return simpson_index

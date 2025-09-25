@@ -8,7 +8,7 @@ from statsmodels.graphics.tukeyplot import results
 import logging
 import sys
 
-from diagnostic_tool.biodiversity_metrics import calculate_shannon_wiener_index_batch,calculate_biodiversity_units, calculate_species_richness,calculate_habitat_condition_score, calculate_endemism_index, calculate_functional_richness
+from diagnostic_tool.biodiversity_metrics import calculate_shannon_wiener_index_batch,calculate_biodiversity_units, calculate_species_richness,calculate_habitat_condition_score, calculate_endemism_index, calculate_functional_richness, calculate_simpson_index
 
 
 logging.basicConfig(
@@ -406,3 +406,16 @@ def test_functional_richness_all_traits_missing():
     with pytest.raises(ValueError) as excinfo:
         calculate_functional_richness(trait_data,trait_count=6)
     print(excinfo.value)
+
+def test_simpson_index_basic():
+    simpson_data = [
+        {"species_id":"A", "abundance": 10},
+        {"species_id":"B", "abundance": 20},
+        {"species_id":"C", "abundance": 30},
+
+    ]
+
+    result = calculate_simpson_index(simpson_data)
+    total = 10 + 20 + 30
+    expected = 1- ((10/total)**2 + (20/total)**2 + (30/total)**2)
+    assert np.isclose(result,expected)
