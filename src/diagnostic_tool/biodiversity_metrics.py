@@ -370,7 +370,7 @@ def calculate_simpson_index(
 
     type_schema = {
         "species_id": (str, float),
-        "abundance": (int, int)
+        "abundance": (float, int)
     }
     validate_type_schema(simpson_data, type_schema)
     for record in simpson_data:
@@ -381,3 +381,4 @@ def calculate_simpson_index(
         sum_pi_squared += pi * pi
     simpson_index = 1 - sum_pi_squared
     return simpson_index
+

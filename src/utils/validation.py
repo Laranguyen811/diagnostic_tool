@@ -55,6 +55,10 @@ def validate_type_schema(
     Raises:
         TypeError: If any input is not a float or int.
     """
+    if not inputs: # If inputs are empty. Check for the truthiness of a value
+        raise ValueError("Input data is empty. Cannot validate types.")
+    if inputs is None: # Check whether the value is None
+        raise ValueError("Input data is None. Cannot validate types.")
     for i, record in enumerate(inputs):
         for key, expected_type in type_schema.items():
             if key not in record:
@@ -63,3 +67,6 @@ def validate_type_schema(
                 raise TypeError(f"Record {i}, key {key} has type {type(record[key]).__name__}"
                                 f"expected one of: {[t.__name__ for t in expected_type]}"
                                 )
+        if record is None:
+            raise ValueError(f"Record {i} is None.")
+

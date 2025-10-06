@@ -419,3 +419,47 @@ def test_simpson_index_basic():
     total = 10 + 20 + 30
     expected = 1- ((10/total)**2 + (20/total)**2 + (30/total)**2)
     assert np.isclose(result,expected)
+
+
+def test_simpson_index_missing_key():
+    simpson_data = [
+        {"species_id":"A", "abundance": 10},
+        {"species_id":"B"}, # No abundance
+    ]
+    with pytest.raises(ValueError) as excinfo:
+        calculate_simpson_index(simpson_data)
+    print(excinfo.value)
+
+def test_simpson_index_type_mismatch():
+    simpson_data = [
+        {"species_id":"A", "abundance": 10},
+        {"species_id":"B", "abundance": "20"}, # Type mismatch
+    ]
+    with pytest.raises(TypeError) as excinfo:
+        calculate_simpson_index(simpson_data)
+    print(excinfo.value)
+
+def test_simpson_index_empty_input():
+    simpson_data = []
+    with pytest.raises(ValueError) as excinfo:
+        calculate_simpson_index(simpson_data)
+    print(excinfo.value)
+
+def test_simpson_index_zero_abundance():
+    simpson_data = [
+        {"species_id":"A", "abundance": 0},
+        {"species_id":"B", "abundance": 20},
+    ]
+
+    result = calculate_simpson_index(simpson_data)
+    assert result == 0.0
+
+def test_simpson_high_precision():
+    simpson_data = [
+        {"species_id":"A", "abundance": 1e-10},
+        {"species_id":"B", "abundance": 2e-10},
+    ]
+    result = calculate_simpson_index(simpson_data)
+    expected = 1- ((1/3)**2 + (2/3)**2)
+    assert np.isclose(result,expected, rtol=1e-6)
+
