@@ -376,9 +376,60 @@ def calculate_simpson_index(
     for record in simpson_data:
         validate_range(record["abundance"], 0, float("inf"), "abundance")
         total_abundance += record["abundance"]
+    if total_abundance == 0:
+        raise ZeroDivisionError("Total abundance cannot be zero.")
     for record in simpson_data:
         pi = record["abundance"] / total_abundance
         sum_pi_squared += pi * pi
+
     simpson_index = 1 - sum_pi_squared
     return simpson_index
+
+def calculate_potential_disappeared_fraction(
+        potential_disappeared_data: List[Dict[str,Any]]
+) -> float:
+    '''
+    Calculate the potential disappeared fraction based on species abundance data.
+    Args:
+        potential_disappeared_data (List[Dict[str,Any]]): A list of dictionaries containing species abundance data.
+    Returns:
+        float: Calculated potential disappeared fraction.
+            >>> potential_disappeared_data = [{
+        ...     "area_converted": 10.0, "pdf_factor_land_use": 0.1,
+        ...     "emission": 0.2, "pdf_factor_emission": 0.5,
+        ...     "water_use": 0.4, "pdf_factor_water_use": 0.2,
+        ...     "chemical_use": 0.6, "pdf_factor_ecotoxic": 0.2,
+        ... }]
+        >>> calculate_potential_disappeared_fraction(potential_disappeared_data)
+        1.30
+
+
+    '''
+    required_keys ={
+        "area_converted": (0.0, float("inf")),
+        "pdf_factor_land_use": (0.0, float("inf")),
+        "emission": (0.0, float("inf")),
+        "pdf_factor_emission": (0.0, float("inf")),
+        "water_use": (0.0, float("inf")),
+        "pdf_factor_water_use": (0.0, float("inf")),
+        "chemical_use": (0.0, float("inf")),
+        "pdf_factor_ecotoxic": (0.0, float("inf")),
+         }
+    pdf_total = 0.0
+    pdf_land_use = 0.0
+    pdf_emission = 0.0
+    pdf_water_use = 0.0
+    pdf_ecotoxicity = 0.0
+    for record in potential_disappeared_data:
+        for key, (min_val, max_val) in required_keys.items():
+            validate_range(record[key], min_val, max_val, name=key)
+        pdf_land_use = record['area_converted'] * record["pdf_factor_land_use"]
+        pdf_emission = record['emission'] * record["pdf_factor_emission"]
+        pdf_water_use = record['water_use'] * record["pdf_factor_water_use"]
+        pdf_ecotoxicity = record['chemical_use'] * record["pdf_factor_ecotoxic"]
+
+
+        pdf_total += pdf_land_use + pdf_emission + pdf_water_use + pdf_ecotoxicity
+    return pdf_total
+
 
