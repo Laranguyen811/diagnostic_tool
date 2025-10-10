@@ -8,7 +8,7 @@ from statsmodels.graphics.tukeyplot import results
 import logging
 import sys
 
-from diagnostic_tool.biodiversity_metrics import calculate_shannon_wiener_index_batch,calculate_biodiversity_units, calculate_species_richness,calculate_habitat_condition_score, calculate_endemism_index, calculate_functional_richness, calculate_simpson_index
+from diagnostic_tool.biodiversity_metrics import calculate_shannon_wiener_index_batch,calculate_biodiversity_units, calculate_species_richness,calculate_habitat_condition_score, calculate_endemism_index, calculate_functional_richness, calculate_simpson_index, calculate_potential_disappeared_fraction
 
 
 logging.basicConfig(
@@ -462,4 +462,169 @@ def test_simpson_high_precision():
     result = calculate_simpson_index(simpson_data)
     expected = 1- ((1/3)**2 + (2/3)**2)
     assert np.isclose(result,expected, rtol=1e-6)
+
+def test_simpson_index_all_zero():
+    simpson_data = [
+        {"species_id":"A", "abundance": 0},
+        {"species_id":"B", "abundance": 0},
+    ]
+    with pytest.raises(ZeroDivisionError) as excinfo:
+        calculate_simpson_index(simpson_data)
+    print(excinfo.value)
+
+def test_simpson_index_float_abundance():
+    simpson_data = [
+        {"species_id":"A", "abundance": 10.5},
+        {"species_id":"B", "abundance": 20.25},
+    ]
+    result = calculate_simpson_index(simpson_data)
+    total = 10.5 + 20.25
+    expected = 1- ((10.5/total)**2 + (20.25/total)**2)
+    assert np.isclose(result,expected)
+
+def test_simpson_index_single_species():
+    simpson_data = [
+        {"species_id":"A", "abundance": 10},
+    ]
+    result = calculate_simpson_index(simpson_data)
+    assert result == 0.0
+
+def test_simpson_index_with_extra_keys():
+    simpson_data = [
+        {"species_id":"A", "abundance": 10, "note": "dominant"},
+        {"species_id":"B", "abundance": 20,"note":"rare"},
+        ]
+    result = calculate_simpson_index(simpson_data)
+    total = 10 + 20
+    expected = 1- ((10/total)**2 + (20/total)**2)
+    assert np.isclose(result,expected)
+
+def test_calculate_potential_disappeared_species_basic():
+    pdf_data = [
+        {"area_converted": 10, "pdf_factor_land_use": 0.1,
+         "emission": 20, "pdf_factor_emission": 0.6,
+         "water_use": 30, "pdf_factor_water_use": 0.3,
+         "chemical_use": 40, "pdf_factor_ecotoxic": 0.4,
+
+        },
+        {"area_converted": 20, "pdf_factor_land_use": 0.2,
+        "emission": 30, "pdf_factor_emission": 0.5,
+        "water_use": 40, "pdf_factor_water_use": 0.4,
+        "chemical_use": 50, "pdf_factor_ecotoxic": 0.3,
+
+        }
+        ]
+    pdf_result = calculate_potential_disappeared_fraction(pdf_data)
+    expected_result = 10 * 0.1 + 20 * 0.6 + 30 * 0.3 + 40 * 0.4 + 20 * 0.2 + 30 * 0.5 + 40 * 0.4 + 50 * 0.3
+    assert np.isclose(pdf_result, 88.0)
+
+def test_calculate_potential_disappeared_species_missing_key():
+    pdf_data = [
+        {"area_converted": 10, "pdf_factor_land_use": 0.1,
+         "emission": 20, # Missing key
+         "water_use": 30, "pdf_factor_water_use": 0.3,
+         "chemical_use": 40, "pdf_factor_ecotoxic": 0.4,
+        }
+    ]
+    with pytest.raises(ValueError) as excinfo:
+        calculate_potential_disappeared_fraction(pdf_data)
+    print(excinfo.value)
+
+def test_calculate_potential_disappeared_species_type_mismatch():
+    pdf_data = [
+        {"area_converted": 10, "pdf_factor_land_use": 0.1,
+         "emission": 20, "pdf_factor_emission": 0.6,
+         "water_use": 30, "pdf_factor_water_use": 'None', # type mismatch
+         "chemical_use": 40, "pdf_factor_ecotoxic": 0.4,
+        },
+        {"area_converted": 20, "pdf_factor_land_use": 0.2,
+        "emission": 30, "pdf_factor_emission": 0.5,
+        "water_use": 10, "pdf_factor_water_use": 0.4,
+         "chemical_use": 40, "pdf_factor_ecotoxic": 0.4,
+        }
+    ]
+    with pytest.raises(TypeError) as excinfo:
+        calculate_potential_disappeared_fraction(pdf_data)
+    print(excinfo.value)
+
+def test_calculate_potential_disappeared_species_empty_input():
+    pdf_data = []
+    with pytest.raises(ValueError) as excinfo:
+        calculate_potential_disappeared_fraction(pdf_data)
+    print(excinfo.value)
+
+def test_calculate_potential_disappeared_species_zero_case():
+    pdf_data = [
+        {"area_converted": 10, "pdf_factor_land_use": 0.1,
+         "emission": 10, "pdf_factor_emission": -0.1,
+         "water_use": 30, "pdf_factor_water_use": 0.3,
+         "chemical_use": 30, "pdf_factor_ecotoxic": -0.3,
+        },
+        {"area_converted": 20, "pdf_factor_land_use": 0.2,
+        "emission": 20, "pdf_factor_emission": -0.2,
+        "water_use": 40, "pdf_factor_water_use": 0.4,
+         "chemical_use": 40, "pdf_factor_ecotoxic": -0.4,
+        }
+    ]
+    result = calculate_potential_disappeared_fraction(pdf_data)
+    assert result == 0.0
+
+def test_calculate_potential_disappeared_species_float_abundance():
+    pdf_data = [
+        {"area_converted": 10.5, "pdf_factor_land_use": 0.1,
+         "emission": 20.25, "pdf_factor_emission": 0.6,
+         "water_use": 30.75, "pdf_factor_water_use": 0.3,
+         "chemical_use": 40.5, "pdf_factor_ecotoxic": 0.4,
+        },
+        {"area_converted": 20.5, "pdf_factor_land_use": 0.2,
+        "emission": 30.5, "pdf_factor_emission": 0.5,
+        "water_use": 40.5, "pdf_factor_water_use": 0.4,
+         "chemical_use": 50.5, "pdf_factor_ecotoxic": 0.3,
+        }
+    ]
+    result = calculate_potential_disappeared_fraction(pdf_data)
+    expected = sum([10.5*0.1, 20.25*0.6, 30.75 * 0.3, 40.5 * 0.4,20.5 * 0.2, 30.5 * 0.5, 40.5 * 0.4, 50.5 * 0.3])
+    assert np.isclose(result,expected)
+
+def test_calculate_potential_disappeared_species_float_precision():
+    pdf_data = [
+        {"area_converted": 10.5324, "pdf_factor_land_use": 0.1323,
+         "emission": 20.253322, "pdf_factor_emission": 0.2323,
+         "water_use": 30.72335, "pdf_factor_water_use": 0.3434,
+         "chemical_use": 40.53232, "pdf_factor_ecotoxic": 0.2323,
+        },
+        {"area_converted": 20.434343, "pdf_factor_land_use": 0.14687,
+        "emission": 30.103854, "pdf_factor_emission": 0.19434945,
+        "water_use": 40.2033243, "pdf_factor_water_use": 0.129943,
+         "chemical_use": 50.120384, "pdf_factor_ecotoxic": 0.23245,
+        }
+    ]
+    result = calculate_potential_disappeared_fraction(pdf_data)
+    expected = sum([10.5324*0.1323, 20.253322*0.2323, 30.72335 * 0.3434, 40.53232 * 0.2323,20.434343 * 0.14687, 30.103854 * 0.19434945, 40.2033243 * 0.129943, 50.120384 * 0.23245])
+    assert np.isclose(result,expected,rtol=1e-6)
+
+def test_calculate_potential_disappeared_species_single_species():
+    pdf_data = [
+        {"area_converted": 10, "pdf_factor_land_use": 0.1,
+         "emission": 20, "pdf_factor_emission": 0.6,
+         "water_use": 30, "pdf_factor_water_use": 0.3,
+         "chemical_use": 40, "pdf_factor_ecotoxic": 0.4,
+        }
+    ]
+    result = calculate_potential_disappeared_fraction(pdf_data)
+    expected = 10*0.1 + 20*0.6 + 30*0.3 + 40*0.4
+    assert np.isclose(result,expected)
+
+def test_calculate_potential_disappeared_species_with_extra_keys():
+    pdf_data = [
+        {"area_converted": 10, "pdf_factor_land_use": 0.1,
+         "emission": 20, "pdf_factor_emission": 0.6,
+         "water_use": 30, "pdf_factor_water_use": 0.3,
+         "chemical_use": 40, "pdf_factor_ecotoxic": 0.4,
+         "extra_key": 100,
+        }
+    ]
+    result = calculate_potential_disappeared_fraction(pdf_data)
+    expected = 10*0.1 + 20*0.6 + 30*0.3 + 40*0.4
+    assert np.isclose(result,expected)
 
