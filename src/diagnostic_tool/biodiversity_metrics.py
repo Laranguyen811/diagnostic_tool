@@ -367,9 +367,8 @@ def calculate_simpson_index(
     """
     total_abundance = 0
     sum_pi_squared = 0.0
-
     type_schema = {
-        "species_id": (str, float),
+        "species_id": (str, int),
         "abundance": (float, int)
     }
     validate_type_schema(simpson_data, type_schema)
@@ -406,15 +405,26 @@ def calculate_potential_disappeared_fraction(
 
     '''
     required_keys ={
-        "area_converted": (0.0, float("inf")),
-        "pdf_factor_land_use": (0.0, float("inf")),
-        "emission": (0.0, float("inf")),
-        "pdf_factor_emission": (0.0, float("inf")),
-        "water_use": (0.0, float("inf")),
-        "pdf_factor_water_use": (0.0, float("inf")),
-        "chemical_use": (0.0, float("inf")),
-        "pdf_factor_ecotoxic": (0.0, float("inf")),
+        "area_converted": (float("-inf"), float("inf")),
+        "pdf_factor_land_use": (float("-inf"), float("inf")),
+        "emission": (float("-inf"), float("inf")),
+        "pdf_factor_emission": (float("-inf"), float("inf")),
+        "water_use": (float("-inf"), float("inf")),
+        "pdf_factor_water_use": (float("-inf"), float("inf")),
+        "chemical_use": (float("-inf"), float("inf")),
+        "pdf_factor_ecotoxic": (float("-inf"), float("inf")),
          }
+    type_schema = {
+        "area_converted": (int, float),
+        "pdf_factor_land_use": (int, float),
+        "emission": (int, float),
+        "pdf_factor_emission": (int, float),
+        "water_use": (int, float),
+        "pdf_factor_water_use": (int, float),
+        "chemical_use": (int, float),
+        "pdf_factor_ecotoxic": (int, float),
+    }
+    validate_type_schema(potential_disappeared_data,type_schema)
     pdf_total = 0.0
     pdf_land_use = 0.0
     pdf_emission = 0.0
@@ -422,13 +432,11 @@ def calculate_potential_disappeared_fraction(
     pdf_ecotoxicity = 0.0
     for record in potential_disappeared_data:
         for key, (min_val, max_val) in required_keys.items():
-            validate_range(record[key], min_val, max_val, name=key)
+            validate_range(record[key],min_val,max_val,key)
         pdf_land_use = record['area_converted'] * record["pdf_factor_land_use"]
         pdf_emission = record['emission'] * record["pdf_factor_emission"]
         pdf_water_use = record['water_use'] * record["pdf_factor_water_use"]
         pdf_ecotoxicity = record['chemical_use'] * record["pdf_factor_ecotoxic"]
-
-
         pdf_total += pdf_land_use + pdf_emission + pdf_water_use + pdf_ecotoxicity
     return pdf_total
 
