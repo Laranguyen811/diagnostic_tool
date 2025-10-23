@@ -515,8 +515,8 @@ def test_calculate_potential_disappeared_species_basic():
         }
         ]
     pdf_result = calculate_potential_disappeared_fraction(pdf_data)
-    expected_result = 10 * 0.1 + 20 * 0.6 + 30 * 0.3 + 40 * 0.4 + 20 * 0.2 + 30 * 0.5 + 40 * 0.4 + 50 * 0.3
-    assert np.isclose(pdf_result, 88.0)
+    expected = 10 * 0.1 + 20 * 0.6 + 30 * 0.3 + 40 * 0.4 + 20 * 0.2 + 30 * 0.5 + 40 * 0.4 + 50 * 0.3
+    assert np.isclose(pdf_result, expected)
 
 def test_calculate_potential_disappeared_species_missing_key():
     pdf_data = [
